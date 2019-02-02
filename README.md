@@ -1,2 +1,2 @@
 # kaggle-competitions
-My entries in kaggle competitions
+My entries for kaggle competitions
