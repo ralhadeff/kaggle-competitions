@@ -139,8 +139,6 @@ class FeatureTester():
             skip allows user to skip a single feature (for recomparing etc)
         """
         X, y = self.build_data(skip)
-        # scale
-        X = self.scaler.fit_transform(X)
         # fit and score
         X_train, X_test, y_train, y_test = train_test_split(X, y, 
                             test_size=self.test_size, random_state=self.random_seed)
@@ -157,8 +155,6 @@ class FeatureTester():
     
     def score_test_set(self,skip=None):
         X, y = self.build_data(skip)
-        # scale
-        X = self.scaler.fit_transform(X)
         # fit and score
         X_train, X_test, y_train, y_test = train_test_split(X, y,
                             test_size=self.test_size, random_state=self.random_seed)
@@ -170,8 +166,6 @@ class FeatureTester():
 
     def predict(self,df):
         X = self.build_data(skip=None,data=df)
-        # scale
-        X = self.scaler.transform(X)
         # fit and score
         predictions = []
         for estimator in self.estimators:
@@ -216,6 +210,8 @@ class FeatureTester():
             print(missing_features)
         
     def build_data(self,skip=None,data=None):
+        # keep track of column names
+        col_names = []
         # set data
         if (data is None):
             data = self.data
@@ -226,6 +222,7 @@ class FeatureTester():
         skip_num = False
         for feature in numerical:
             if (feature[0]!=skip):
+                col_names.append(feature[0])
                 if (len(feature)==2):
                     x = data[feature[0]]
                 else:
@@ -245,11 +242,17 @@ class FeatureTester():
         ordinal = self.print_features('ordinal',True)
         for feature in ordinal:
             if (feature[0]!=skip):
+                col_names.append(feature[0])
                 if (feature[2] == 'auto'):
                     X = np.hstack((X,data[feature[0]][:,None]))
                 else:
                     column = data.fillna('nan')[feature[0]].map(feature[2])
                     X = np.hstack((X,column[:,None]))
+        # scale before dummy features
+        if (data is self.data):
+            X = self.scaler.fit_transform(X)
+        else:
+            X = self.scaler.transform(X)
         # add categorical features
         categorical = self.print_features('categorical',True)
         for feature in categorical:
@@ -261,7 +264,9 @@ class FeatureTester():
                         dummies = make_dummy(data,feature[0],omit=feature[2])
                     else:
                         dummies = make_dummy(data,feature[0],binning=feature[2])
+                col_names.append(dummies.columns)
                 X = np.hstack((X,dummies))
+        self.col_names = col_names
         # return
         if (data is self.data):
             # y
