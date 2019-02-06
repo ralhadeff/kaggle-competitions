@@ -275,7 +275,7 @@ def make_dummy(df, column,omit=None,binning=None):
         for ls in binning:
             name = ''
             for col in ls:
-                name += col + '_'
+                name += str(col) + '_'
             dummies[name] = dummies[ls].sum(axis=1)
             dummies.drop(ls,axis=1,inplace=True)
     if (nulls>0):
