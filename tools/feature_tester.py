@@ -7,7 +7,7 @@ TODO:
     add transformed features (log, 1/x, x**2 etc)
     improve the scaling
     add restore feature
-
+    fix the problem with missing dummies between data and the prediction input
 """
 
 import numpy as np
@@ -155,6 +155,29 @@ class FeatureTester():
         self.previous = scores
         return np.concatenate((self.names,np.round(scores,self.precision))).reshape(2,len(scores)).T
     
+    def score_test_set(self,skip=None):
+        X, y = self.build_data(skip)
+        # scale
+        X = self.scaler.fit_transform(X)
+        # fit and score
+        X_train, X_test, y_train, y_test = train_test_split(X, y,
+                            test_size=self.test_size, random_state=self.random_seed)
+        scores = []
+        for estimator in self.estimators:
+            estimator.fit(X_train,y_train)
+            scores.append( estimator.score(X_test,y_test) )
+        return np.concatenate((self.names,np.round(scores,self.precision))).reshape(2,len(scores)).T
+
+    def predict(self,df):
+        X = self.build_data(skip=None,data=df)
+        # scale
+        X = self.scaler.transform(X)
+        # fit and score
+        predictions = []
+        for estimator in self.estimators:
+            predictions.append( estimator.predict(X) )
+        return predictions
+
     def score_feature(self,feature):
         """Check the difference is scoring with and without a feature"""
         self.fit(skip=feature)
@@ -192,7 +215,10 @@ class FeatureTester():
             print('Note, there are features in the dataset that were not tested')
             print(missing_features)
         
-    def build_data(self,skip=None):
+    def build_data(self,skip=None,data=None):
+        # set data
+        if (data is None):
+            data = self.data
         # add numerical features
         numerical = self.print_features('numerical',True)
         X = np.array([])
@@ -201,44 +227,48 @@ class FeatureTester():
         for feature in numerical:
             if (feature[0]!=skip):
                 if (len(feature)==2):
-                    x = self.data[feature[0]]
+                    x = data[feature[0]]
                 else:
                     if (feature[2]=='mean'):
-                        fill = self.data[feature[0]].mean()
+                        fill = data[feature[0]].mean()
                     else:
                         fill = feature[2]
-                    x = self.data[feature[0]].fillna(fill)
+                    x = data[feature[0]].fillna(fill)
                 X = np.concatenate((X,x))
             else:
                 skip_num = True
         if (skip_num):
-            X = X.reshape(len(numerical)-1,len(self.data)).T
+            X = X.reshape(len(numerical)-1,len(data)).T
         else:
-            X = X.reshape(len(numerical),len(self.data)).T
+            X = X.reshape(len(numerical),len(data)).T
         # add ordinal features
         ordinal = self.print_features('ordinal',True)
         for feature in ordinal:
             if (feature[0]!=skip):
                 if (feature[2] == 'auto'):
-                    X = np.hstack((X,self.data[feature[0]][:,None]))
+                    X = np.hstack((X,data[feature[0]][:,None]))
                 else:
-                    column = self.data.fillna('nan')[feature[0]].map(feature[2])
+                    column = data.fillna('nan')[feature[0]].map(feature[2])
                     X = np.hstack((X,column[:,None]))
         # add categorical features
         categorical = self.print_features('categorical',True)
         for feature in categorical:
             if (feature[0]!=skip):
                 if (feature[2]=='auto'):
-                    dummies = make_dummy(self.data,feature[0])
+                    dummies = make_dummy(data,feature[0])
                 else:
                     if (type(feature[2]) is str):
-                        dummies = make_dummy(self.data,feature[0],omit=feature[2])
+                        dummies = make_dummy(data,feature[0],omit=feature[2])
                     else:
-                        dummies = make_dummy(self.data,feature[0],binning=feature[2])
+                        dummies = make_dummy(data,feature[0],binning=feature[2])
                 X = np.hstack((X,dummies))
-        # y 
-        y = self.data[self.y]
-        return X, y 
+        # return
+        if (data is self.data):
+            # y
+            y = data[self.y]
+            return X, y 
+        else:
+            return X
 
 def get_dict(df,column):
     """
