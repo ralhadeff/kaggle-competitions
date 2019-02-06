@@ -1,6 +1,13 @@
 """
 Feature Tester
 this is a work in progress
+
+TODO:
+    printout feature to column number (for X) list
+    add transformed features (log, 1/x, x**2 etc)
+    improve the scaling
+    add restore feature
+
 """
 
 import numpy as np
@@ -28,6 +35,8 @@ class FeatureTester():
         # random seem to train_test_split
         if (random_seed=='random'):
             self.random_seed = np.random.randint(0,1000)
+        else:
+            self.random_seed = random_seed
         # test size (in train_test_split)
         self.test_size = test_size
         # number of CV iterations
@@ -44,7 +53,7 @@ class FeatureTester():
         self.y = column
     
     def add_feature(self,feature,dtype='numerical',arg='auto'):
-        """
+        '''
         Add feature to the regression
             default is numerical
             
@@ -53,10 +62,10 @@ class FeatureTester():
             categorical can be specified in dtype, if so, feature will be converted to dummy columns
                 by default omitting NaN or the least frequest label
                 (otherwise, dummy to omit can be specified by name)
-        """
+        '''
         if (dtype=='numerical'):
             # check that there are no missing values
-            if (data[feature].isnull().sum()>0):
+            if (self.data[feature].isnull().sum()>0):
                 if (arg is None):
                     raise ValueError('This feature has missing values, add missing values manually\
                                      or specify a default value')
@@ -97,7 +106,7 @@ class FeatureTester():
         if (arg is None):
             if (dtype=='numerical'):
                 if (arg is None):
-                    if (data[feature].isnull().sum()>0):
+                    if (self.data[feature].isnull().sum()>0):
                         raise ValueError('This feature has missing values, add missing values manually\
                                      or specify a default value')
                     self.features[i] = (feature,dtype)
@@ -195,7 +204,7 @@ class FeatureTester():
                     x = self.data[feature[0]]
                 else:
                     if (feature[2]=='mean'):
-                        fill = data[feature[0]].mean()
+                        fill = self.data[feature[0]].mean()
                     else:
                         fill = feature[2]
                     x = self.data[feature[0]].fillna(fill)
@@ -203,9 +212,9 @@ class FeatureTester():
             else:
                 skip_num = True
         if (skip_num):
-            X = X.reshape(len(numerical)-1,len(data)).T
+            X = X.reshape(len(numerical)-1,len(self.data)).T
         else:
-            X = X.reshape(len(numerical),len(data)).T
+            X = X.reshape(len(numerical),len(self.data)).T
         # add ordinal features
         ordinal = self.print_features('ordinal',True)
         for feature in ordinal:
@@ -220,15 +229,15 @@ class FeatureTester():
         for feature in categorical:
             if (feature[0]!=skip):
                 if (feature[2]=='auto'):
-                    dummies = make_dummy(data,feature[0])
+                    dummies = make_dummy(self.data,feature[0])
                 else:
                     if (type(feature[2]) is str):
-                        dummies = make_dummy(data,feature[0],omit=feature[2])
+                        dummies = make_dummy(self.data,feature[0],omit=feature[2])
                     else:
-                        dummies = make_dummy(data,feature[0],binning=feature[2])
+                        dummies = make_dummy(self.data,feature[0],binning=feature[2])
                 X = np.hstack((X,dummies))
         # y 
-        y = data[self.y]
+        y = self.data[self.y]
         return X, y 
 
 def get_dict(df,column):
@@ -246,8 +255,8 @@ def observe_feature(df,column,y):
     if (n>=20):
         sns.scatterplot(x=column,y=y,data=df)
     if (n<20):
-        print(data[column].value_counts())
-        sns.boxplot(x=column,y=y,data=data.fillna('nan'))
+        print(df[column].value_counts())
+        sns.boxplot(x=column,y=y,data=df.fillna('nan'))
         plt.show()
             
 def make_dummy(df, column,omit=None,binning=None):
