@@ -3,10 +3,7 @@ Feature Tester
 this is a work in progress
 
 TODO:
-    printout feature to column number (for X) list
-    add transformed features (log, 1/x, x**2 etc)
-    improve the scaling
-    add restore feature
+    add transform_feature (log(x), 1/x, x**2 etc)
     fix the problem with missing dummies between data and the prediction input
 """
 
@@ -50,6 +47,8 @@ class FeatureTester():
         
     def set_y(self,column):
         """Mark the y column (by name)"""
+        if (column not in self.data.columns):
+            raise ValueError('Column does not exist in the provided data')
         self.y = column
     
     def add_feature(self,feature,dtype='numerical',arg='auto'):
@@ -99,6 +98,17 @@ class FeatureTester():
                 break
             i+=1
         return i
+    
+    def find_column_number(self,feature):
+        """
+        Find the column index of a feature by name (in the output X array)
+            Note: features that are transformed to dummy
+            will be searched for by the name of the dummy variable
+        """
+        for i in range(len(self.col_names)):
+            if (self.col_names[i] == feature):
+                return i
+        return 'not found'
 
     def modify_feature(self,feature,dtype,arg=None):
         """Modify a feature and score it"""
@@ -119,13 +129,18 @@ class FeatureTester():
         return self.score_feature(feature)
     
     def remove_feature(self,feature):
-        """Move the last added feature(s) to the No pile
-        """
+        """Move the last added feature(s) to the No pile"""
         i = self.find_feature_index(feature)
         removed = self.features.pop(i)
         self.dont_use.append(removed[0])
-        # run fit again to correct self.previous
-        self.fit()
+        # reset self.previous
+        self.previous = None
+        
+    def restore_feature(self,feature,dtype,arg=None):
+        """Bring a deleted feature back to the used features"""
+        self.dont_use.remove(feature)
+        self.add_feature(feature,dtype,arg) 
+        return self.score_feature(feature)
     
     def add_estimator(self,estimator,name):
         """Add a named estimator to perform regression with"""
@@ -138,6 +153,8 @@ class FeatureTester():
             compare will also print the different in the score from the previous fit
             skip allows user to skip a single feature (for recomparing etc)
         """
+        if (self.y is None or len(self.features)==0 or len(self.estimators)==0):
+            raise ValueError('There is critical input missing. Make sure you provide estimators, features and a target')
         X, y = self.build_data(skip)
         # fit and score
         X_train, X_test, y_train, y_test = train_test_split(X, y, 
@@ -165,12 +182,16 @@ class FeatureTester():
         return np.concatenate((self.names,np.round(scores,self.precision))).reshape(2,len(scores)).T
 
     def predict(self,df):
-        X = self.build_data(skip=None,data=df)
+        # training data
+        X, y = self.build_data()
+        # data to predict
+        pX = self.build_data(skip=None,data=df)
         # fit and score
         predictions = []
         for estimator in self.estimators:
+            estimator.fit(X,y)
             predictions.append( estimator.predict(X) )
-        return predictions
+        return np.array(predictions)
 
     def score_feature(self,feature):
         """Check the difference is scoring with and without a feature"""
@@ -187,8 +208,7 @@ class FeatureTester():
             print(feature[0])
             current = self.fit(False,skip=feature[0])[:,1].astype(float)
             diff = np.round(scores-current,self.precision)
-            print(np.concatenate((names,diff))
-                           .reshape(2,len(self.estimators)).T)
+            print(np.concatenate((names,diff)).reshape(2,len(self.estimators)).T)
     
     def sanity_check(self):
         """Make sure there is nothing that makes not sense or that raises red flags"""
@@ -252,7 +272,10 @@ class FeatureTester():
         if (data is self.data):
             X = self.scaler.fit_transform(X)
         else:
-            X = self.scaler.transform(X)
+            try:
+                X = self.scaler.transform(X)
+            except:
+                print('Scaling failed, do fit() and try again')
         # add categorical features
         categorical = self.print_features('categorical',True)
         for feature in categorical:
@@ -264,15 +287,18 @@ class FeatureTester():
                         dummies = make_dummy(data,feature[0],omit=feature[2])
                     else:
                         dummies = make_dummy(data,feature[0],binning=feature[2])
-                col_names.append(dummies.columns)
+                col_names.extend(dummies.columns)
                 X = np.hstack((X,dummies))
-        self.col_names = col_names
-        # return
         if (data is self.data):
-            # y
+            # only if working on the training data
+            if (skip is None):
+                # update column names
+                self.col_names = col_names
+            # set y
             y = data[self.y]
             return X, y 
         else:
+            # otherwise, this is a test set, there is no y
             return X
 
 def get_dict(df,column):
@@ -321,3 +347,6 @@ def make_dummy(df, column,omit=None,binning=None):
         return dummies.drop(rarest,axis=1)
     else:
         return dummmies.drop(omit,axis=1)
+    
+if (__name__ == '__main__'):
+    print("This module is not intended to run by iself")
