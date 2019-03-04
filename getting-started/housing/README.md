@@ -1,4 +1,4 @@
-Kaggle training competition (under 'Getting Started') on predicting housing prices in Ames, Iowa
+##House Prices: Advanced Regression Techniques
 
 https://www.kaggle.com/c/house-prices-advanced-regression-techniques
 
