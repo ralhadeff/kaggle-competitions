@@ -6,6 +6,6 @@ Several solutions:
 
 * Plain input (flat vector) - `MNIST_flat.ipynb` (97.2% on Kaggle)
 * CNN - `MNIST_convolution.ipynb` (98.7% on Kaggle)
-* Transfer learning (VGG) - `MNIST_VGG.ipynb` (% on Kaggle)  
+* Transfer learning (VGG) - `MNIST_VGG.ipynb` (91.9% on Kaggle - because it was slow, I only trained the network for 1 epoch)  
 
-Note: VGG is probably an overkill for MNIST, but this was done for practice and future reference purposes.
+Note: VGG is probably too fancy here, and is mostly for reference purposes.
