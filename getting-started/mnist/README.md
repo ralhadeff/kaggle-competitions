@@ -8,4 +8,4 @@ Several solutions:
 * CNN - `MNIST_convolution.ipynb` (98.7% on Kaggle)
 * Transfer learning (VGG) - `MNIST_VGG.ipynb` (% on Kaggle)  
 
-Note: VGG is probably an overkill for MNIST, but this was done for practice and reference purposes.
+Note: VGG is probably an overkill for MNIST, but this was done for practice and future reference purposes.
